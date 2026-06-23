@@ -141,6 +141,13 @@ variable "keyvault_public_network_access_enabled" {
   default     = true
 }
 
+variable "keyvault_admin_object_id" {
+  description = "Microsoft Entra object ID that should be Key Vault Administrator. Leave null to use the current Terraform caller."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
 variable "servicebus_queue_names" {
   description = "Service Bus queues required by PipelineIQ services."
   type        = list(string)

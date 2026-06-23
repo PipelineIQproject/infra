@@ -79,7 +79,7 @@ module "keyvault" {
   resource_group_name           = module.resource_group.name
   location                      = module.resource_group.location
   tenant_id                     = data.azurerm_client_config.current.tenant_id
-  current_object_id             = data.azurerm_client_config.current.object_id
+  current_object_id             = coalesce(var.keyvault_admin_object_id, data.azurerm_client_config.current.object_id)
   aks_kubelet_object_id         = module.aks.kubelet_object_id
   private_endpoint_subnet_id    = module.network.private_endpoint_subnet_id
   app_vnet_id                   = module.network.app_vnet_id

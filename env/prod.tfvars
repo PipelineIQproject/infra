@@ -22,6 +22,7 @@ jumpbox_admin_username = "azureuser"
 postgres_admin_login   = "Chandana"
 
 keyvault_public_network_access_enabled = true
+keyvault_admin_object_id               = "e871d0c8-fb4c-4e17-925f-38d303e834ae"
 
 servicebus_queue_names = [
   "pipeline.monitor",
