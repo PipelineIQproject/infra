@@ -61,11 +61,7 @@ jobs:
           fi
 
           echo "ENV_NAME=$ENV_NAME" >> "$GITHUB_ENV"
-          if [[ "$ENV_NAME" == "prod" ]]; then
-            echo "TFVARS_FILE=.pipeline.prod.tfvars" >> "$GITHUB_ENV"
-          else
-            echo "TFVARS_FILE=.pipeline.dev.tfvars" >> "$GITHUB_ENV"
-          fi
+          echo "TFVARS_FILE=env/${ENV_NAME}.tfvars" >> "$GITHUB_ENV"
 
       - name: Azure login with managed identity
         shell: bash
@@ -79,79 +75,6 @@ jobs:
         with:
           terraform_version: ${{ env.TF_VERSION }}
           terraform_wrapper: false
-
-      - name: Create tfvars
-        shell: bash
-        run: |
-          if [[ "$ENV_NAME" == "prod" ]]; then
-            cat > "$TFVARS_FILE" <<'EOF'
-          location            = "swedencentral"
-          resource_group_name = "rg-pipelineiq-sweden"
-          project_name        = "pipelineiq"
-          environment         = "prod"
-          resource_suffix     = "a814"
-          app_domain          = "www.pipelinesolutions.xyz"
-          aks_name            = "pipeline-aks"
-          aks_node_vm_size    = "Standard_D2s_v5"
-          aks_node_count      = 1
-          key_vault_name      = null
-          jumpbox_vm_name     = "pipelinevm"
-          admin_email         = "arjunaah681@gmail.com"
-
-          entra_app_display_name                = "PipelineIQ"
-          entra_client_secret_display_name      = "pipelineiq-auth"
-          entra_client_secret_end_date_relative = "8760h"
-
-          tfstate_storage_account_name = null
-          tfstate_container_name       = "tfstate"
-
-          jumpbox_admin_username = "azureuser"
-          postgres_admin_login   = "Chandana"
-
-          keyvault_public_network_access_enabled = true
-
-          servicebus_queue_names = [
-            "pipeline.monitor",
-            "pipeline.analyze",
-            "pipeline.ai",
-            "pipeline.notify"
-          ]
-          EOF
-          else
-            cat > "$TFVARS_FILE" <<'EOF'
-          location            = "swedencentral"
-          resource_group_name = "rg-pipelineiq-dev-sweden"
-          project_name        = "pipelineiq"
-          environment         = "dev"
-          resource_suffix     = "dev001"
-          app_domain          = "dev.pipelinesolutions.xyz"
-          aks_name            = "pipeline-dev-aks"
-          aks_node_vm_size    = "Standard_D2s_v5"
-          aks_node_count      = 1
-          key_vault_name      = null
-          jumpbox_vm_name     = "pipeline-dev-vm"
-          admin_email         = "dev-owner@example.com"
-
-          entra_app_display_name                = "PipelineIQ Dev"
-          entra_client_secret_display_name      = "pipelineiq-dev-auth"
-          entra_client_secret_end_date_relative = "8760h"
-
-          tfstate_storage_account_name = null
-          tfstate_container_name       = "tfstate"
-
-          jumpbox_admin_username = "azureuser"
-          postgres_admin_login   = "pgadminuser"
-
-          keyvault_public_network_access_enabled = true
-
-          servicebus_queue_names = [
-            "pipeline.monitor",
-            "pipeline.analyze",
-            "pipeline.ai",
-            "pipeline.notify"
-          ]
-          EOF
-          fi
 
       - name: Terraform format check
         shell: bash
@@ -176,7 +99,7 @@ jobs:
       - name: Upload plan artifact
         uses: actions/upload-artifact@v4
         with:
-          name: terraform-plan
+          name: terraform-plan-${{ env.ENV_NAME }}
           path: |
             tfplan
             plan_output.txt
@@ -234,7 +157,7 @@ jobs:
       - name: Download plan artifact
         uses: actions/download-artifact@v4
         with:
-          name: terraform-plan
+          name: terraform-plan-${{ env.ENV_NAME }}
 
       - name: Terraform init
         shell: bash
