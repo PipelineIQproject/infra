@@ -1,0 +1,33 @@
+location            = "swedencentral"
+resource_group_name = "rg-pipelineiq-sweden"
+project_name        = "pipelineiq"
+environment         = "prod"
+resource_suffix     = "a814"
+app_domain          = "www.pipelinesolutions.xyz"
+aks_name            = "pipeline-aks"
+key_vault_name      = "keyvaultpipeline"
+jumpbox_vm_name     = "pipelinevm"
+admin_email         = "arjunaah681@gmail.com"
+
+entra_app_display_name                    = "PipelineIQ"
+entra_client_secret_display_name          = "pipelineiq-auth"
+entra_client_secret_end_date_relative     = "8760h"
+
+tfstate_storage_account_name = "storageaccountpipeline"
+tfstate_container_name       = "tfstate"
+
+jumpbox_admin_username = "azureuser"
+jumpbox_admin_password = "Chandana@2003"
+
+postgres_admin_login    = "Chandana"
+postgres_admin_password = "Welcome123"
+
+# Keep true while adding secrets from Portal/Cloud Shell. Set false only after private access is ready.
+keyvault_public_network_access_enabled = true
+
+servicebus_queue_names = [
+  "pipeline.monitor",
+  "pipeline.analyze",
+  "pipeline.ai",
+  "pipeline.notify"
+]
