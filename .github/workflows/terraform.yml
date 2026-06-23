@@ -30,6 +30,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
   pull-requests: write
 
 env:
@@ -39,7 +40,7 @@ env:
 jobs:
   plan:
     name: "Terraform Plan"
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     env:
       TF_VAR_jumpbox_admin_password: ${{ secrets.JUMPBOX_ADMIN_PASSWORD }}
@@ -63,12 +64,20 @@ jobs:
           echo "ENV_NAME=$ENV_NAME" >> "$GITHUB_ENV"
           echo "TFVARS_FILE=env/${ENV_NAME}.tfvars" >> "$GITHUB_ENV"
 
-      - name: Azure login with managed identity
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set Azure Terraform environment
         shell: bash
         run: |
-          az login --identity --output none
-          echo "ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)" >> "$GITHUB_ENV"
-          echo "ARM_TENANT_ID=$(az account show --query tenantId -o tsv)" >> "$GITHUB_ENV"
+          echo "ARM_USE_OIDC=true" >> "$GITHUB_ENV"
+          echo "ARM_CLIENT_ID=${{ vars.AZURE_CLIENT_ID }}" >> "$GITHUB_ENV"
+          echo "ARM_TENANT_ID=${{ vars.AZURE_TENANT_ID }}" >> "$GITHUB_ENV"
+          echo "ARM_SUBSCRIPTION_ID=${{ vars.AZURE_SUBSCRIPTION_ID }}" >> "$GITHUB_ENV"
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -128,7 +137,7 @@ jobs:
   apply:
     name: "Terraform Apply"
     needs: plan
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply'
     environment: ${{ github.event.inputs.environment == 'prod' && 'production' || 'development' }}
 
@@ -141,12 +150,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Azure login with managed identity
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set Azure Terraform environment
         shell: bash
         run: |
-          az login --identity --output none
-          echo "ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)" >> "$GITHUB_ENV"
-          echo "ARM_TENANT_ID=$(az account show --query tenantId -o tsv)" >> "$GITHUB_ENV"
+          echo "ARM_USE_OIDC=true" >> "$GITHUB_ENV"
+          echo "ARM_CLIENT_ID=${{ vars.AZURE_CLIENT_ID }}" >> "$GITHUB_ENV"
+          echo "ARM_TENANT_ID=${{ vars.AZURE_TENANT_ID }}" >> "$GITHUB_ENV"
+          echo "ARM_SUBSCRIPTION_ID=${{ vars.AZURE_SUBSCRIPTION_ID }}" >> "$GITHUB_ENV"
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
