@@ -12,7 +12,7 @@ Terraform creates:
 - Main resource group
 - Two VNets:
   - Application VNet
-  - Database VNet
+  - Database VNet 
 - VNet peering between application and database VNets
 - AKS private cluster
 - Azure Application Gateway with AGIC add-on
