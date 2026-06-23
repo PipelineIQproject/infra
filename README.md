@@ -14,7 +14,7 @@ Terraform creates:
   - Application VNet
   - Database VNet    
 - VNet peering between application and database VNets
-- AKS private cluster
+- AKS private cluster 
 - Azure Application Gateway with AGIC add-on
 - Azure Container Registry
 - Azure Key Vault with private endpoint
