@@ -34,7 +34,7 @@ variable "node_vm_size" {
 
 variable "node_count" {
   type    = number
-  default = 3
+  default = 1
 }
 
 variable "tags" {

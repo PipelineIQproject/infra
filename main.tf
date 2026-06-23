@@ -3,13 +3,23 @@ data "azurerm_client_config" "current" {}
 locals {
   name_prefix          = lower("${var.project_name}-${var.environment}")
   compact_prefix       = lower(replace("${local.name_prefix}${var.resource_suffix}", "-", ""))
-  postgres_server_name = substr("${local.compact_prefix}pg", 0, 63)
-  key_vault_name       = var.key_vault_name
-  servicebus_namespace = substr("${local.compact_prefix}sb", 0, 50)
-  acr_name             = substr("${local.compact_prefix}acr", 0, 50)
+  global_prefix        = "${local.compact_prefix}${random_string.tfstate_suffix.result}"
+  postgres_server_name = substr("${local.global_prefix}pg", 0, 63)
+  key_vault_name       = coalesce(var.key_vault_name, substr("${local.compact_prefix}kv", 0, 24))
+  servicebus_namespace = substr("${local.global_prefix}sb", 0, 50)
+  acr_name             = substr("${local.global_prefix}acr", 0, 50)
+  tfstate_sa_name      = coalesce(var.tfstate_storage_account_name, substr("st${local.compact_prefix}${random_string.tfstate_suffix.result}", 0, 24))
   entra_redirect_uri   = "https://${var.app_domain}/api/auth/entra/callback"
   github_redirect_uri  = "https://${var.app_domain}/api/auth/github/callback"
   merged_tags          = merge(var.tags, { environment = var.environment, owner = var.admin_email })
+}
+
+resource "random_string" "tfstate_suffix" {
+  length  = 6
+  lower   = true
+  numeric = true
+  special = false
+  upper   = false
 }
 
 module "resource_group" {
@@ -57,6 +67,8 @@ module "aks" {
   location            = module.resource_group.location
   subnet_id           = module.network.aks_subnet_id
   app_gateway_id      = module.appgateway.id
+  node_vm_size        = var.aks_node_vm_size
+  node_count          = var.aks_node_count
   tags                = local.merged_tags
 }
 

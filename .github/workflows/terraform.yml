@@ -1,0 +1,249 @@
+name: "Terraform - PipelineIQ Infrastructure"
+
+on:
+  pull_request:
+    branches:
+      - main
+      - dev
+  push:
+    branches:
+      - main
+      - dev
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to target"
+        required: true
+        default: "prod"
+        type: choice
+        options:
+          - prod
+          - dev
+      action:
+        description: "Terraform action"
+        required: true
+        default: "plan"
+        type: choice
+        options:
+          - plan
+          - apply
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  TF_VERSION: "1.6.6"
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  plan:
+    name: "Terraform Plan"
+    runs-on: self-hosted
+
+    env:
+      TF_VAR_jumpbox_admin_password: ${{ secrets.JUMPBOX_ADMIN_PASSWORD }}
+      TF_VAR_postgres_admin_password: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve environment
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            ENV_NAME="${{ github.event.inputs.environment }}"
+          elif [[ "${{ github.ref_name }}" == "main" || "${{ github.base_ref }}" == "main" ]]; then
+            ENV_NAME="prod"
+          else
+            ENV_NAME="dev"
+          fi
+
+          echo "ENV_NAME=$ENV_NAME" >> "$GITHUB_ENV"
+          if [[ "$ENV_NAME" == "prod" ]]; then
+            echo "TFVARS_FILE=.pipeline.prod.tfvars" >> "$GITHUB_ENV"
+          else
+            echo "TFVARS_FILE=.pipeline.dev.tfvars" >> "$GITHUB_ENV"
+          fi
+
+      - name: Azure login with managed identity
+        shell: bash
+        run: |
+          az login --identity --output none
+          echo "ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)" >> "$GITHUB_ENV"
+          echo "ARM_TENANT_ID=$(az account show --query tenantId -o tsv)" >> "$GITHUB_ENV"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Create tfvars
+        shell: bash
+        run: |
+          if [[ "$ENV_NAME" == "prod" ]]; then
+            cat > "$TFVARS_FILE" <<'EOF'
+          location            = "swedencentral"
+          resource_group_name = "rg-pipelineiq-sweden"
+          project_name        = "pipelineiq"
+          environment         = "prod"
+          resource_suffix     = "a814"
+          app_domain          = "www.pipelinesolutions.xyz"
+          aks_name            = "pipeline-aks"
+          aks_node_vm_size    = "Standard_D2s_v5"
+          aks_node_count      = 1
+          key_vault_name      = null
+          jumpbox_vm_name     = "pipelinevm"
+          admin_email         = "arjunaah681@gmail.com"
+
+          entra_app_display_name                = "PipelineIQ"
+          entra_client_secret_display_name      = "pipelineiq-auth"
+          entra_client_secret_end_date_relative = "8760h"
+
+          tfstate_storage_account_name = null
+          tfstate_container_name       = "tfstate"
+
+          jumpbox_admin_username = "azureuser"
+          postgres_admin_login   = "Chandana"
+
+          keyvault_public_network_access_enabled = true
+
+          servicebus_queue_names = [
+            "pipeline.monitor",
+            "pipeline.analyze",
+            "pipeline.ai",
+            "pipeline.notify"
+          ]
+          EOF
+          else
+            cat > "$TFVARS_FILE" <<'EOF'
+          location            = "swedencentral"
+          resource_group_name = "rg-pipelineiq-dev-sweden"
+          project_name        = "pipelineiq"
+          environment         = "dev"
+          resource_suffix     = "dev001"
+          app_domain          = "dev.pipelinesolutions.xyz"
+          aks_name            = "pipeline-dev-aks"
+          aks_node_vm_size    = "Standard_D2s_v5"
+          aks_node_count      = 1
+          key_vault_name      = null
+          jumpbox_vm_name     = "pipeline-dev-vm"
+          admin_email         = "dev-owner@example.com"
+
+          entra_app_display_name                = "PipelineIQ Dev"
+          entra_client_secret_display_name      = "pipelineiq-dev-auth"
+          entra_client_secret_end_date_relative = "8760h"
+
+          tfstate_storage_account_name = null
+          tfstate_container_name       = "tfstate"
+
+          jumpbox_admin_username = "azureuser"
+          postgres_admin_login   = "pgadminuser"
+
+          keyvault_public_network_access_enabled = true
+
+          servicebus_queue_names = [
+            "pipeline.monitor",
+            "pipeline.analyze",
+            "pipeline.ai",
+            "pipeline.notify"
+          ]
+          EOF
+          fi
+
+      - name: Terraform format check
+        shell: bash
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        shell: bash
+        run: terraform init -input=false
+
+      - name: Select workspace
+        shell: bash
+        run: terraform workspace select "$ENV_NAME" || terraform workspace new "$ENV_NAME"
+
+      - name: Terraform validate
+        shell: bash
+        run: terraform validate -no-color
+
+      - name: Terraform plan
+        shell: bash
+        run: terraform plan -var-file="$TFVARS_FILE" -out=tfplan -input=false -no-color | tee plan_output.txt
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: |
+            tfplan
+            plan_output.txt
+
+      - name: Comment plan on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('plan_output.txt', 'utf8');
+            const maxLen = 60000;
+            const body = [
+              `## Terraform Plan - ${process.env.ENV_NAME}`,
+              '```hcl',
+              plan.length > maxLen ? plan.slice(0, maxLen) + '\n\n... [truncated]' : plan,
+              '```'
+            ].join('\n');
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
+
+  apply:
+    name: "Terraform Apply"
+    needs: plan
+    runs-on: self-hosted
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply'
+    environment: ${{ github.event.inputs.environment == 'prod' && 'production' || 'development' }}
+
+    env:
+      ENV_NAME: ${{ github.event.inputs.environment }}
+      TF_VAR_jumpbox_admin_password: ${{ secrets.JUMPBOX_ADMIN_PASSWORD }}
+      TF_VAR_postgres_admin_password: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login with managed identity
+        shell: bash
+        run: |
+          az login --identity --output none
+          echo "ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)" >> "$GITHUB_ENV"
+          echo "ARM_TENANT_ID=$(az account show --query tenantId -o tsv)" >> "$GITHUB_ENV"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Download plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-plan
+
+      - name: Terraform init
+        shell: bash
+        run: terraform init -input=false
+
+      - name: Select workspace
+        shell: bash
+        run: terraform workspace select "$ENV_NAME" || terraform workspace new "$ENV_NAME"
+
+      - name: Terraform apply
+        shell: bash
+        run: terraform apply -input=false -auto-approve tfplan

@@ -5,7 +5,9 @@ environment         = "prod"
 resource_suffix     = "a814"
 app_domain          = "www.pipelinesolutions.xyz"
 aks_name            = "pipeline-aks"
-key_vault_name      = "keyvaultpipeline"
+aks_node_vm_size    = "Standard_D2s_v5"
+aks_node_count      = 1
+key_vault_name      = null
 jumpbox_vm_name     = "pipelinevm"
 admin_email         = "arjunaah681@gmail.com"
 
@@ -13,7 +15,7 @@ entra_app_display_name                    = "PipelineIQ"
 entra_client_secret_display_name          = "pipelineiq-auth"
 entra_client_secret_end_date_relative     = "8760h"
 
-tfstate_storage_account_name = "storageaccountpipeline"
+tfstate_storage_account_name = null
 tfstate_container_name       = "tfstate"
 
 jumpbox_admin_username = "azureuser"

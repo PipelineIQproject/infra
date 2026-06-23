@@ -1,5 +1,5 @@
 resource "azurerm_storage_account" "tfstate" {
-  name                            = var.tfstate_storage_account_name
+  name                            = local.tfstate_sa_name
   resource_group_name             = module.resource_group.name
   location                        = module.resource_group.location
   account_tier                    = "Standard"

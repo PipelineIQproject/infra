@@ -1,0 +1,37 @@
+# Example values for a separate dev workspace.
+# Copy to terraform.dev.tfvars locally or pass from pipeline variables/secrets.
+
+location            = "swedencentral"
+resource_group_name = "rg-pipelineiq-dev-sweden"
+project_name        = "pipelineiq"
+environment         = "dev"
+resource_suffix     = "dev001"
+app_domain          = "dev.pipelinesolutions.xyz"
+aks_name            = "pipeline-dev-aks"
+aks_node_vm_size    = "Standard_D2s_v5"
+aks_node_count      = 1
+key_vault_name      = null
+jumpbox_vm_name     = "pipeline-dev-vm"
+admin_email         = "dev-owner@example.com"
+
+entra_app_display_name                = "PipelineIQ Dev"
+entra_client_secret_display_name      = "pipelineiq-dev-auth"
+entra_client_secret_end_date_relative = "8760h"
+
+tfstate_storage_account_name = null
+tfstate_container_name       = "tfstate"
+
+jumpbox_admin_username = "azureuser"
+jumpbox_admin_password = "ReplaceWithDevPassword123!"
+
+postgres_admin_login    = "pgadminuser"
+postgres_admin_password = "ReplaceWithDevPostgresPassword123!"
+
+keyvault_public_network_access_enabled = true
+
+servicebus_queue_names = [
+  "pipeline.monitor",
+  "pipeline.analyze",
+  "pipeline.ai",
+  "pipeline.notify"
+]

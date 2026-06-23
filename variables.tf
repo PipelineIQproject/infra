@@ -19,19 +19,31 @@ variable "resource_suffix" {
 variable "location" {
   description = "Azure region."
   type        = string
-  default     = "centralindia"
+  default     = "swedencentral"
 }
 
 variable "resource_group_name" {
   description = "Main resource group name."
   type        = string
-  default     = "rg-pipelineiq-prod"
+  default     = "rg-pipelineiq-sweden"
 }
 
 variable "aks_name" {
   description = "AKS cluster name."
   type        = string
   default     = "pipeline-aks"
+}
+
+variable "aks_node_vm_size" {
+  description = "VM size for the AKS system node pool."
+  type        = string
+  default     = "Standard_D2s_v5"
+}
+
+variable "aks_node_count" {
+  description = "Node count for the AKS system node pool. Keep this within the available regional vCPU quota."
+  type        = number
+  default     = 1
 }
 
 variable "jumpbox_vm_name" {
@@ -41,8 +53,15 @@ variable "jumpbox_vm_name" {
 }
 
 variable "tfstate_storage_account_name" {
-  description = "Globally unique Azure Storage Account name for Terraform state. Must be lowercase letters/numbers, 3-24 chars."
+  description = "Optional globally unique Azure Storage Account name for Terraform state. Leave null to generate one."
   type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition     = var.tfstate_storage_account_name == null || can(regex("^[a-z0-9]{3,24}$", var.tfstate_storage_account_name))
+    error_message = "The Terraform state storage account name must be 3-24 lowercase letters or numbers."
+  }
 }
 
 variable "tfstate_container_name" {
@@ -58,9 +77,15 @@ variable "app_domain" {
 }
 
 variable "key_vault_name" {
-  description = "Azure Key Vault name used for application secrets."
+  description = "Optional Azure Key Vault name used for application secrets. Leave null to derive one from the project/environment suffix."
   type        = string
-  default     = "keyvaultpipeline"
+  default     = null
+  nullable    = true
+
+  validation {
+    condition     = var.key_vault_name == null || can(regex("^[a-zA-Z][a-zA-Z0-9-]{1,22}[a-zA-Z0-9]$", var.key_vault_name))
+    error_message = "The Key Vault name must be 3-24 characters, start with a letter, end with a letter or number, and contain only letters, numbers, and hyphens."
+  }
 }
 
 variable "entra_app_display_name" {

@@ -56,8 +56,24 @@ Update at least:
 admin_email                  = "your-email@example.com"
 postgres_admin_password      = "strong-password"
 app_domain                   = "www.pipelinesolutions.xyz"
-tfstate_storage_account_name = "globallyuniqueaccountname"
+tfstate_storage_account_name = null
 ```
+
+By default, the Terraform state storage account name is generated with a random
+suffix so it is valid and globally unique. If you set
+`tfstate_storage_account_name` yourself, it must be 3-24 lowercase letters or
+numbers and globally unique across Azure.
+
+The default AKS system pool is one `Standard_D2s_v5` node so the first apply fits
+subscriptions with only 2 available regional vCPUs. Increase `aks_node_count` or
+`aks_node_vm_size` after Azure quota is available.
+
+Leave `key_vault_name` as `null` unless you already own a globally unique vault
+name. Terraform will derive a suffix-based vault name such as
+`pipelineiqproda814kv`.
+
+ACR, PostgreSQL, Service Bus, and the Terraform state storage account include a
+generated suffix so first apply avoids global name collisions.
 
 Then run:
 
