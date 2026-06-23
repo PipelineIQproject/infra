@@ -1,4 +1,4 @@
-# PipelineIQ Azure Infrastructure
+ # PipelineIQ Azure Infrastructure
 
 Terraform for the PipelineIQ Azure platform.
 
